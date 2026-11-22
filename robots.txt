@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://inble-outils.github.io/sitemap.xml

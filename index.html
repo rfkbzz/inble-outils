@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulateur cotisations URSSAF micro-entrepreneur 2026 – gratuit</title>
+<meta name="description" content="Calculez en 10 secondes vos cotisations sociales de micro-entrepreneur en 2026 : taux officiels (12,3 %, 21,2 %, 25,6 %, 23,2 %), contribution formation incluse. Gratuit, sans inscription.">
+<link rel="canonical" href="https://inble-outils.github.io/">
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--ink:#14213d;--mut:#5b6478;--acc:#0b6bcb;--ok:#0a7f4f;--line:#e2e6ef}
+*{box-sizing:border-box}body{margin:0;font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+.w{max-width:760px;margin:0 auto;padding:20px}
+header{padding:28px 0 8px}h1{font-size:1.8rem;line-height:1.2;margin:0 0 8px}p.lead{color:var(--mut);margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin:18px 0}
+label{display:block;font-weight:600;margin:12px 0 6px}
+select,input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:1rem;background:#fff}
+.row{display:flex;gap:12px;flex-wrap:wrap}.row>div{flex:1;min-width:200px}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:16px}
+.k{background:#eef4fc;border-radius:12px;padding:14px}.k b{display:block;font-size:1.5rem}.k span{color:var(--mut);font-size:.9rem}
+.k.net{background:#e8f6ef}.k.net b{color:var(--ok)}
+.warn{background:#fff4e0;border:1px solid #f0d49a;border-radius:10px;padding:10px 12px;margin-top:12px;display:none}
+.cta{display:block;background:var(--acc);color:#fff;text-align:center;text-decoration:none;font-weight:700;padding:14px;border-radius:12px;margin-top:14px}
+small,.src{color:var(--mut);font-size:.85rem}a{color:var(--acc)}
+table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid var(--line);padding:8px;text-align:left}
+footer{padding:20px 0 40px;color:var(--mut);font-size:.85rem}
+</style>
+</head>
+<body><div class="w">
+<header>
+<h1>Combien allez-vous payer à l’URSSAF en 2026 ?</h1>
+<p class="lead">Simulateur gratuit de cotisations de micro-entrepreneur. Entrez le chiffre d’affaires d’une déclaration (mois, trimestre ou année) et lisez le résultat. Rien n’est enregistré : le calcul se fait dans votre navigateur.</p>
+</header>
+
+<main>
+<section class="card" aria-labelledby="sim">
+<h2 id="sim" style="margin-top:0">Simulateur</h2>
+<div class="row">
+<div><label for="act">Votre activité</label>
+<select id="act">
+<option value="vente">Vente de marchandises / hébergement</option>
+<option value="serv">Prestation de services commerciale (BIC)</option>
+<option value="art">Activité artisanale (BIC)</option>
+<option value="bnc">Profession libérale non réglementée (BNC, SSI)</option>
+<option value="cipav">Profession libérale réglementée (BNC, CIPAV)</option>
+</select></div>
+<div><label for="ca">Chiffre d’affaires encaissé (€)</label>
+<input id="ca" type="number" min="0" step="10" value="3000" inputmode="decimal"></div>
+</div>
+<div class="res" aria-live="polite">
+<div class="k"><b id="cot">–</b><span>Cotisations sociales</span></div>
+<div class="k"><b id="cfp">–</b><span>Contribution formation (CFP)</span></div>
+<div class="k"><b id="tot">–</b><span>Total à payer à l’URSSAF</span></div>
+<div class="k net"><b id="net">–</b><span>Il vous reste (avant impôt)</span></div>
+</div>
+<p id="taux" class="src"></p>
+<div class="warn" id="warn"></div>
+<a class="cta" href="https://inble.gumroad.com/l/tableur-micro-entrepreneur-2026">Suivre tout ça automatiquement : le tableur Excel / Google Sheets (12 €)</a>
+</section>
+
+<section class="card">
+<h2 style="margin-top:0">Taux utilisés (2026)</h2>
+<table>
+<tr><th>Activité</th><th>Cotisations</th><th>CFP</th><th>Plafond annuel de CA</th></tr>
+<tr><td>Vente de marchandises</td><td>12,3 %</td><td>0,1 %</td><td>203 100 €</td></tr>
+<tr><td>Prestation de services (BIC)</td><td>21,2 %</td><td>0,2 %</td><td>83 600 €</td></tr>
+<tr><td>Artisan (BIC)</td><td>21,2 %</td><td>0,3 %</td><td>83 600 €</td></tr>
+<tr><td>Libéral SSI (BNC)</td><td>25,6 %</td><td>0,2 %</td><td>83 600 €</td></tr>
+<tr><td>Libéral CIPAV (BNC)</td><td>23,2 %</td><td>0,2 %</td><td>83 600 €</td></tr>
+</table>
+<p class="src">Taux relevés et vérifiés le 22/11/2026 sur <a href="https://www.economie.gouv.fr">economie.gouv.fr</a> et <a href="https://www.urssaf.fr">urssaf.fr</a>. Les règles peuvent changer : vérifiez sur urssaf.fr avant toute décision.</p>
+</section>
+
+<section class="card">
+<h2 style="margin-top:0">Ce que ce simulateur ne calcule pas</h2>
+<ul>
+<li>L’impôt sur le revenu (abattement ou versement libératoire) ;</li>
+<li>la réduction ACRE de début d’activité ;</li>
+<li>la cotisation foncière des entreprises (CFE) ;</li>
+<li>la TVA (franchise jusqu’à 85 000 € de vente, 37 500 € de services en 2026).</li>
+</ul>
+<p>Le résultat est une <strong>estimation indicative</strong>, pas un conseil comptable.</p>
+</section>
+</main>
+
+<footer>
+<p>Site indépendant d’aide aux micro-entrepreneurs, créé avec l’aide d’une IA et relu sur sources officielles. <a href="mentions-legales.html">Mentions légales</a> · Aucun cookie, aucun traceur.</p>
+</footer>
+</div>
+<script>
+const T={vente:[12.3,0.1,203100],serv:[21.2,0.2,83600],art:[21.2,0.3,83600],bnc:[25.6,0.2,83600],cipav:[23.2,0.2,83600]};
+const f=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+function calc(){
+ const a=T[document.getElementById('act').value];
+ const ca=Math.max(0,parseFloat(document.getElementById('ca').value)||0);
+ const c=ca*a[0]/100,p=ca*a[1]/100;
+ cot.textContent=f(c);cfp.textContent=f(p);tot.textContent=f(c+p);net.textContent=f(ca-c-p);
+ taux.textContent='Taux appliqués : '+String(a[0]).replace('.',',')+' % de cotisations + '+String(a[1]).replace('.',',')+' % de CFP.';
+ const w=document.getElementById('warn');
+ if(ca>a[2]){w.style.display='block';w.textContent='Attention : ce montant dépasse le plafond annuel de '+a[2].toLocaleString('fr-FR')+' € (s’il s’agit d’une année entière).';}else w.style.display='none';
+}
+['act','ca'].forEach(i=>document.getElementById(i).addEventListener('input',calc));calc();
+</script>
+</body></html>
