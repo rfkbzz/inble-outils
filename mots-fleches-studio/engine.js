@@ -105,19 +105,29 @@
     return courts / n - (0.3 * s.filter((x) => x[3] >= 4 && x[3] <= 6).length) / n;
   }
 
-  function meilleurGabarit(R, C, rng, tirages, maxlen, maxDiese) {
-    let best = null, bs = 9;
+  // Nombre de mots imposés qu'un gabarit peut accueillir (un emplacement par mot, longueurs égales).
+  function capacite(slots, imposes) {
+    const dispo = {};
+    for (const x of slots) dispo[x[3]] = (dispo[x[3]] || 0) + 1;
+    let n = 0;
+    for (const m of imposes) if (dispo[m.length] > 0) { dispo[m.length]--; n++; }
+    return n;
+  }
+
+  function meilleurGabarit(R, C, rng, tirages, maxlen, maxDiese, imposes) {
+    let best = null, bs = 99;
     for (let i = 0; i < tirages; i++) {
       const t = gabaritReseau(R, C, rng, maxlen, maxDiese);
       if (!t) continue;
-      const sc = scoreGabarit(t.s);
+      let sc = scoreGabarit(t.s);
+      if (imposes && imposes.length) sc -= 2 * capacite(t.s, imposes) / imposes.length; // accueillir les mots imposés d'abord
       if (sc < bs) { best = t; bs = sc; }
     }
     return best;
   }
 
   // Remplissage par retour arrière (heuristique du slot le plus contraint). limiteMs = temps max.
-  function remplir(g, slots, lex, rng, limiteMs, interdits) {
+  function remplir(g, slots, lex, rng, limiteMs, interdits, imposes, sautsMax) {
     const R = g.length, C = g[0].length;
     const cases = slots.map(([r, c, d, L]) => Array.from({ length: L }, (_, k) => (d === "H" ? [r, c + k] : [r + k, c])));
     const grille = Array.from({ length: R }, () => new Array(C).fill(null));
@@ -126,6 +136,9 @@
     const utilises = new Set();
     const choix = new Map();
     const t0 = Date.now();
+
+    const poses = [];
+    const ordreImp = imposes && imposes.length ? rng.shuffle(imposes.slice()).sort((x, y) => y.length - x.length) : [];
 
     function candidats(i) {
       const cs = cases[i];
@@ -148,7 +161,7 @@
         if (choix.has(i)) continue;
         reste++;
         const cd = candidats(i);
-        if (!cd.length) return false;
+        if (!cd.length) { if (typeof process !== 'undefined' && process.env.MF_DEBUG2) console.error('slot sans candidat', slots[i].join(','), cases[i].map(([r, c]) => grille[r][c] || '.').join(''), 'choisis', choix.size); return false; }
         if (mc === null || cd.length < mc.length) { meilleur = i; mc = cd; if (cd.length === 1) break; }
       }
       if (!reste) return true;
@@ -165,9 +178,49 @@
       return false;
     }
 
-    if (!dfs()) return null;
+    // Mots imposés : recherche avec retour arrière. Chaque mot est posé dans un emplacement de sa longueur
+    // (anticipation : les emplacements croisés doivent garder un mot possible), puis on remplit le reste.
+    // Un mot qui ne peut pas être posé est sauté en dernier recours.
+    let nbDfs = 0, sauts = 0;
+    function poserImposes(idx) {
+      if (Date.now() - t0 > limiteMs || nbDfs > 12) return false;
+      if (idx >= ordreImp.length) { if (++nbDfs > 12) return false; return dfs(); }
+      const m = ordreImp[idx];
+      const libres = [];
+      for (let i = 0; i < slots.length; i++) {
+        if (choix.has(i) || cases[i].length !== m.length) continue;
+        let ok = true;
+        for (let k = 0; k < m.length; k++) { const v = grille[cases[i][k][0]][cases[i][k][1]]; if (v !== null && v !== m[k]) { ok = false; break; } }
+        if (ok) libres.push(i);
+      }
+      rng.shuffle(libres);
+      if (!utilises.has(m)) for (const i of libres.slice(0, 8)) {
+        const sauve = cases[i].map(([r, c]) => [r, c, grille[r][c]]);
+        cases[i].forEach(([r, c], k) => { grille[r][c] = m[k]; });
+        choix.set(i, m); utilises.add(m); poses.push(m);
+        let viable = true;
+        for (let j = 0; j < slots.length && viable; j++) {
+          if (choix.has(j)) continue;
+          if (!cases[j].some(([r, c]) => cases[i].some(([r2, c2]) => r === r2 && c === c2))) continue;
+          if (!candidats(j).length) viable = false;
+        }
+        if (viable && poserImposes(idx + 1)) return true;
+        poses.pop(); utilises.delete(m); choix.delete(i);
+        for (const [r, c, v] of sauve) grille[r][c] = v;
+        if (Date.now() - t0 > limiteMs) return false;
+      }
+      if (sauts >= (sautsMax || 0)) return false;
+      sauts++;
+      const r = poserImposes(idx + 1); // mot sauté
+      sauts--;
+      return r;
+    }
+
+    const okDfs = poserImposes(0);
+    if (typeof process !== 'undefined' && process.env.MF_DEBUG) console.error('pose', poses.length + '/' + ordreImp.length, 'ok', okDfs, Date.now() - t0 + 'ms');
+    if (!okDfs) return null;
     const mots = slots.map((s, i) => ({ r: s[0], c: s[1], dir: s[2], len: s[3], mot: choix.get(i) }));
-    return { grille, mots };
+    return { grille, mots, poses };
   }
 
   // Place les définitions : chaque mot a sa case-définition juste avant (à gauche si H, au-dessus si V).
@@ -185,22 +238,55 @@
     return defs;
   }
 
-  // API : faireGrille({R, C, lex, seed, maxlen, maxDiese, limiteMs, essais, interdits})
+  // API : faireGrille({R, C, lex, seed, maxlen, maxDiese, limiteMs, essais, interdits, imposes})
+  // imposes = mots à placer en priorité (prénoms, thème). Résultat : .placesImposes / .manquants.
   function faireGrille(opt) {
     const R = opt.R || 9, C = opt.C || 8;
     const rng = opt.rng || rngFrom(opt.seed || 1);
-    const maxlen = opt.maxlen || 7, maxDiese = opt.maxDiese || 0.42;
+    const imposes = [...new Set((opt.imposes || []).map(norm).filter((m) => m.length >= 2 && m.length < Math.max(R, C)))].filter((m) => opt.lex[m]);
+    const plusLong = imposes.reduce((a, m) => Math.max(a, m.length), 0);
+    const maxlen = opt.maxlen || Math.max(7, plusLong), maxDiese = opt.maxDiese || 0.42;
     const essais = opt.essais || 60, limiteMs = opt.limiteMs || 1500;
-    for (let i = 0; i < essais; i++) {
-      const t = meilleurGabarit(R, C, rng, i < 10 ? 40 : 6, maxlen, maxDiese);
-      if (!t) continue;
-      const rem = remplir(t.g, t.s, opt.lex, rng, limiteMs, opt.interdits);
-      if (rem) {
-        const defs = placerDefinitions(t.g, rem.mots, opt.lex, rng);
-        return { R, C, gabarit: t.g, lettres: rem.grille, mots: rem.mots, defs };
+    let meilleure = null;
+    const tDebut = Date.now(), budget = opt.budgetMs || 5000;
+    if (!imposes.length) {
+      for (let i = 0; i < essais; i++) {
+        const t = meilleurGabarit(R, C, rng, i < 10 ? 40 : 6, maxlen, maxDiese, imposes);
+        if (!t) continue;
+        const rem = remplir(t.g, t.s, opt.lex, rng, limiteMs, opt.interdits, []);
+        if (rem) { meilleure = { t, rem, places: [] }; break; }
+      }
+    } else {
+      // Redémarrages rapides (échec vite, nouveau gabarit) : bien plus efficace qu'une longue recherche.
+      // Au début tous les mots imposés sont exigés ; plus le temps passe, plus on tolère de mots sautés.
+      let i = 0;
+      while (Date.now() - tDebut < budget) {
+        const frac = (Date.now() - tDebut) / budget;
+        const mini = Math.ceil(imposes.length / 3), niveaux = imposes.length - mini + 1;
+        const k = imposes.length - Math.min(niveaux - 1, Math.floor(frac * niveaux)); // on exige un peu moins de mots à chaque palier
+        const sous = rng.shuffle(imposes.slice()).slice(0, k);
+        const t = meilleurGabarit(R, C, rng, 4, maxlen, maxDiese, imposes);
+        i++;
+        if (!t) continue;
+        const rem = remplir(t.g, t.s, opt.lex, rng, opt.tentativeMs || 40, opt.interdits, sous, 0);
+        if (!rem) continue;
+        const dansGrille = new Set(rem.mots.map((w) => w.mot));
+        const places = imposes.filter((m) => dansGrille.has(m));
+        if (!meilleure || places.length > meilleure.places.length) meilleure = { t, rem, places };
+        if (places.length === imposes.length) break;
       }
     }
-    return null;
+    if (!meilleure && imposes.length) {
+      for (let i = 0; i < essais && !meilleure; i++) {
+        const t = meilleurGabarit(R, C, rng, 6, maxlen, maxDiese, []);
+        const rem = t && remplir(t.g, t.s, opt.lex, rng, limiteMs, opt.interdits, []);
+        if (rem) meilleure = { t, rem, places: [] };
+      }
+    }
+    if (!meilleure) return null;
+    const { t, rem, places } = meilleure;
+    const defs = placerDefinitions(t.g, rem.mots, opt.lex, rng);
+    return { R, C, gabarit: t.g, lettres: rem.grille, mots: rem.mots, defs, imposes, placesImposes: places, manquants: imposes.filter((m) => !places.includes(m)) };
   }
 
   const MF = { rngFrom, norm, parseLexique, faireGrille, slotsDuGabarit };
