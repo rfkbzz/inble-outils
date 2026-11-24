@@ -52,7 +52,7 @@ button.sec{background:#fff;color:var(--ink);border:1px solid var(--ink)}
   <label>Format de page (impression)</label>
   <select id="trim"><option value="8.5in 11in">8,5 × 11 po (KDP grand)</option><option value="6in 9in">6 × 9 po (KDP)</option><option value="A4">A4</option><option value="A5">A5</option></select>
   <label><input type="checkbox" id="sols" style="width:auto"> Ajouter les solutions en fin de livre (Pro)</label>
-  <label>Vos propres mots (facultatif) — un par ligne : <code>MOT|définition</code></label>
+  <label>Vos propres mots (facultatif, 2 à 4 mots passent le mieux) — un par ligne : <code>MOT|définition</code></label>
   <textarea id="perso" placeholder="CHAT|Il ronronne&#10;LUNE|Elle éclaire la nuit"></textarea>
   <button id="go">Générer</button>
   <button class="sec" id="print">Imprimer / Enregistrer en PDF</button>
@@ -107,17 +107,20 @@ async function generer() {
   if (!isPro && nb > 1) { nb = 1; $("msg").textContent = "Version gratuite : 1 grille. La licence Pro débloque le livre complet."; } else $("msg").textContent = "";
   const lex = lexique(), utilises = new Set(); const grilles = []; let ratees = 0; const msgGratuit = $("msg").textContent;
   const t0 = Date.now();
+  const imposes = Object.keys(MF.parseLexique($("perso").value)).slice(0, 8); let totImp = 0, placesImp = 0; const manq = [];
   for (let i = 0; i < nb; i++) {
     if (nb > 1) { $("msg").textContent = "Génération… " + (i + 1) + " / " + nb; await new Promise((r) => setTimeout(r, 0)); }
     const sd = (+$("seed").value || 1) * 1000 + i;
-    let g = MF.faireGrille({ R, C, lex, seed: sd, limiteMs: 200, essais: 80, interdits: null });
+    if (imposes.length) { $("msg").textContent = "Recherche d’une grille qui place vos mots…"; await new Promise((r) => setTimeout(r, 20)); }
+    let g = MF.faireGrille({ R, C, lex, seed: sd, limiteMs: 200, essais: 80, interdits: null, imposes, budgetMs: 3500 });
     if (!g) g = MF.faireGrille({ R, C, lex, seed: sd + 500, limiteMs: 1500, essais: 40, interdits: null });
     if (!g) { ratees++; continue; }
+    if (g.imposes) { totImp += g.imposes.length; placesImp += g.placesImposes.length; manq.push(...g.manquants); }
     grilles.push(g);
     out.appendChild(renderPage(g, $("titre").value + " — n° " + (i + 1), false, !isPro));
   }
   if (isPro && $("sols").checked) grilles.forEach((g, i) => out.appendChild(renderPage(g, "Solution — n° " + (i + 1), true, false)));
-  $("msg").textContent = msgGratuit + (ratees ? ` ${ratees} grille(s) impossible(s) (lexique trop petit).` : "") + ` ${grilles.length} grille(s) en ${((Date.now() - t0) / 1000).toFixed(1)} s.`;
+  $("msg").textContent = msgGratuit + (ratees ? ` ${ratees} grille(s) impossible(s) (lexique trop petit).` : "") + ` ${grilles.length} grille(s) en ${((Date.now() - t0) / 1000).toFixed(1)} s.` + (totImp ? ` Vos mots placés : ${placesImp}/${totImp}` + (manq.length ? ` (pas de place pour : ${[...new Set(manq)].join(", ")} — changez la graine ou la taille, ou mettez-en moins).` : ".") : "");
   let st = document.getElementById("pagestyle"); if (!st) { st = document.createElement("style"); st.id = "pagestyle"; document.head.appendChild(st); }
   const pw = {"8.5in 11in":"7.4in","6in 9in":"4.9in","A4":"7in","A5":"4.8in"}[$("trim").value];
   st.textContent = `@page{size:${$("trim").value};margin:.5in} :root{--printw:${pw}}`;
