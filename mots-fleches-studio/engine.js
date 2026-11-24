@@ -1,4 +1,4 @@
-// Moteur de mots fléchés — port JS du moteur de KHAO (atelier/kdp-fleches/moteur.py), sans dépendance.
+// Moteur de mots fléchés — © InBle, sans dépendance.
 // Utilisable dans le navigateur (window.MF) et dans Node (module.exports).
 (function (root) {
   "use strict";
@@ -133,6 +133,12 @@
     const grille = Array.from({ length: R }, () => new Array(C).fill(null));
     const parLong = {};
     for (const m of Object.keys(lex)) if (!interdits || !interdits.has(m)) (parLong[m.length] = parLong[m.length] || []).push(m);
+    // Index (longueur, position, lettre) -> mots : un emplacement déjà croisé ne parcourt que la liste la plus courte.
+    const idx = {};
+    for (const L of Object.keys(parLong)) {
+      idx[L] = Array.from({ length: +L }, () => ({}));
+      for (const m of parLong[L]) for (let k = 0; k < m.length; k++) (idx[L][k][m[k]] = idx[L][k][m[k]] || []).push(m);
+    }
     const utilises = new Set();
     const choix = new Map();
     const t0 = Date.now();
@@ -144,7 +150,15 @@
       const cs = cases[i];
       const pat = cs.map(([r, c]) => grille[r][c]);
       const res = [];
-      for (const m of parLong[cs.length] || []) {
+      let base = parLong[cs.length];
+      if (!base) return res;
+      for (let k = 0; k < pat.length; k++) {
+        if (pat[k] === null) continue;
+        const l = idx[cs.length][k][pat[k]];
+        if (!l) return res;
+        if (l.length < base.length) base = l;
+      }
+      for (const m of base) {
         if (utilises.has(m)) continue;
         let ok = true;
         for (let k = 0; k < pat.length; k++) if (pat[k] !== null && pat[k] !== m[k]) { ok = false; break; }
