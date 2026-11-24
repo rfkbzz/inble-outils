@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Générateur de mots fléchés gratuit à imprimer — Mots Fléchés Studio</title>
+<meta name="description" content="Générez des grilles de mots fléchés en français, gratuitement, dans votre navigateur : définitions incluses, impression A4 ou format KDP, vos propres mots. Aucun envoi de données.">
+<style>
+:root{--ink:#1d2433;--bg:#f6f4ef;--card:#fff;--accent:#c2410c;--line:#1d2433}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{padding:20px 24px;background:var(--ink);color:#fff}
+header h1{margin:0;font-size:22px}header p{margin:4px 0 0;opacity:.8;font-size:14px}
+main{display:grid;grid-template-columns:320px 1fr;gap:20px;padding:20px;max-width:1200px;margin:auto}
+@media(max-width:800px){main{grid-template-columns:1fr}}
+.panel{background:var(--card);border-radius:10px;padding:16px;box-shadow:0 1px 4px #0002}
+label{display:block;font-size:13px;margin:10px 0 3px;font-weight:600}
+input,select,textarea{width:100%;padding:7px;border:1px solid #bbb;border-radius:6px;font:inherit}
+textarea{height:110px;font-family:Consolas,monospace;font-size:12px}
+button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:10px 14px;font:inherit;font-weight:600;cursor:pointer;margin-top:12px;width:100%}
+button.sec{background:#fff;color:var(--ink);border:1px solid var(--ink)}
+.note{font-size:12px;opacity:.75;margin-top:8px}
+.pro{border:1px dashed var(--accent);padding:8px;border-radius:8px;margin-top:12px;font-size:13px}
+#msg{margin-top:8px;font-size:13px;min-height:18px}
+/* grille */
+.page{--cell:52px;background:#fff;margin:0 0 20px;padding:0;position:relative}
+.grille{display:grid;border:2px solid var(--line);background:#fff}
+.cell{border:.5px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.cell.def{background:#eef0f4;flex-direction:column;font-weight:600;text-align:center;line-height:1.05;padding:1px}
+.cell.def span{display:block;width:100%;overflow-wrap:anywhere;hyphens:auto}
+.cell.def.vide{background:#2b3240}
+.cell.sol{font-weight:700}
+.wm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;font-size:48px;font-weight:800;color:#c2410c22;transform:rotate(-25deg);text-align:center}
+.titre{font-weight:700;text-align:center;margin:0 0 6px}
+@media print{
+ body{background:#fff}header,.panel,.note,#seo,footer{display:none}
+ main{display:block;padding:0;max-width:none}
+ .page{--cell:calc(var(--printw) / var(--cols));margin:0 auto;page-break-after:always;break-after:page}
+}
+</style>
+</head>
+<body>
+<header><h1>Mots Fléchés Studio</h1><p>Générez des grilles de mots fléchés en français, prêtes à imprimer ou à publier (KDP). Tout se passe sur votre ordinateur.</p></header>
+<main>
+<section class="panel" id="ctl">
+  <label>Titre du livre / de la grille</label><input id="titre" value="Mots fléchés">
+  <label>Lignes × colonnes</label>
+  <select id="taille"><option value="9x8" selected>9 × 8 (gros caractères)</option><option value="11x9">11 × 9 (standard)</option><option value="13x10">13 × 10 (compact)</option></select>
+  <label>Nombre de grilles <span id="proTag" style="color:var(--accent)">(Pro : jusqu’à 100)</span></label>
+  <input id="nb" type="number" min="1" max="100" value="1">
+  <label>Graine (même graine = mêmes grilles)</label><input id="seed" type="number" value="1">
+  <label>Format de page (impression)</label>
+  <select id="trim"><option value="8.5in 11in">8,5 × 11 po (KDP grand)</option><option value="6in 9in">6 × 9 po (KDP)</option><option value="A4">A4</option><option value="A5">A5</option></select>
+  <label><input type="checkbox" id="sols" style="width:auto"> Ajouter les solutions en fin de livre (Pro)</label>
+  <label>Vos propres mots (facultatif) — un par ligne : <code>MOT|définition</code></label>
+  <textarea id="perso" placeholder="CHAT|Il ronronne&#10;LUNE|Elle éclaire la nuit"></textarea>
+  <button id="go">Générer</button>
+  <button class="sec" id="print">Imprimer / Enregistrer en PDF</button>
+  <div id="msg"></div>
+  <div class="pro" id="proBox"></div>
+  <p class="note">Lexique intégré : ~2 700 mots avec définitions originales. Données de fréquence : Lexique 3.83 (lexique.org, CC BY-SA 4.0).</p>
+</section>
+<section id="out"></section>
+</main>
+<section id="seo"></section>
+<footer></footer>
+<script src="config.js"></script>
+<script src="engine.js"></script>
+<script src="lexique.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+function pro() { return window.PRO_BUILD === true; }   // version Pro = fichier distinct (config.js), vendu sur Gumroad
+function lexique() {
+  const lex = MF.parseLexique(window.LEX_TXT);
+  const perso = MF.parseLexique($("perso").value);
+  for (const m in perso) lex[m] = perso[m];
+  return lex;
+}
+function renderPage(g, titre, solution, wm, trim) {
+  const page = document.createElement("div"); page.className = "page"; page.style.setProperty("--cols", g.C); page.style.width = "calc(var(--cell) * " + g.C + ")";
+  page.innerHTML = '<p class="titre"></p>'; page.firstChild.textContent = titre;
+  const gr = document.createElement("div"); gr.className = "grille";
+  gr.style.gridTemplateColumns = `repeat(${g.C},var(--cell))`; gr.style.gridAutoRows = "var(--cell)";
+  for (let r = 0; r < g.R; r++) for (let c = 0; c < g.C; c++) {
+    const d = document.createElement("div");
+    if (g.gabarit[r][c] === "#") {
+      const defs = g.defs[r][c] || [];
+      d.className = defs.length ? "cell def" : "cell def vide";
+      const txt = defs.map((x) => x.texte).join(" "), motMax = Math.max(1, ...txt.split(/\s+/).map((m) => m.length));
+      let fs = defs.length > 1 ? 0.14 : 0.165;
+      if (motMax > 9) fs *= 9 / motMax;
+      if (txt.length > 26) fs *= Math.sqrt(26 / txt.length);
+      d.style.fontSize = "calc(var(--cell) * " + fs.toFixed(3) + ")";
+      for (const x of defs) { const s = document.createElement("span"); s.textContent = x.texte + (x.dir === "H" ? " →" : " ↓"); d.appendChild(s); }
+    } else { d.className = "cell sol"; d.style.fontSize = "calc(var(--cell) * 0.5)"; d.textContent = solution ? g.lettres[r][c] : ""; }
+    gr.appendChild(d);
+  }
+  page.appendChild(gr);
+  if (wm) { const w = document.createElement("div"); w.className = "wm"; w.textContent = "Mots Fléchés Studio — version gratuite"; page.appendChild(w); }
+  return page;
+}
+async function generer() {
+  const out = $("out"); out.innerHTML = "";
+  const [R, C] = $("taille").value.split("x").map(Number);
+  let nb = Math.max(1, Math.min(100, +$("nb").value || 1));
+  const isPro = pro();
+  if (!isPro && nb > 1) { nb = 1; $("msg").textContent = "Version gratuite : 1 grille. La licence Pro débloque le livre complet."; } else $("msg").textContent = "";
+  const lex = lexique(), utilises = new Set(); const grilles = []; let ratees = 0; const msgGratuit = $("msg").textContent;
+  const t0 = Date.now();
+  for (let i = 0; i < nb; i++) {
+    if (nb > 1) { $("msg").textContent = "Génération… " + (i + 1) + " / " + nb; await new Promise((r) => setTimeout(r, 0)); }
+    const sd = (+$("seed").value || 1) * 1000 + i;
+    let g = MF.faireGrille({ R, C, lex, seed: sd, limiteMs: 200, essais: 80, interdits: null });
+    if (!g) g = MF.faireGrille({ R, C, lex, seed: sd + 500, limiteMs: 1500, essais: 40, interdits: null });
+    if (!g) { ratees++; continue; }
+    grilles.push(g);
+    out.appendChild(renderPage(g, $("titre").value + " — n° " + (i + 1), false, !isPro));
+  }
+  if (isPro && $("sols").checked) grilles.forEach((g, i) => out.appendChild(renderPage(g, "Solution — n° " + (i + 1), true, false)));
+  $("msg").textContent = msgGratuit + (ratees ? ` ${ratees} grille(s) impossible(s) (lexique trop petit).` : "") + ` ${grilles.length} grille(s) en ${((Date.now() - t0) / 1000).toFixed(1)} s.`;
+  let st = document.getElementById("pagestyle"); if (!st) { st = document.createElement("style"); st.id = "pagestyle"; document.head.appendChild(st); }
+  const pw = {"8.5in 11in":"7.4in","6in 9in":"4.9in","A4":"7in","A5":"4.8in"}[$("trim").value];
+  st.textContent = `@page{size:${$("trim").value};margin:.5in} :root{--printw:${pw}}`;
+}
+$("go").onclick = generer;
+$("print").onclick = () => { if (!$("out").children.length) generer(); window.print(); };
+document.getElementById("proBox").innerHTML = window.PRO_BUILD ? "<b>Version Pro</b> : livre complet (jusqu’à 100 grilles), solutions, sans filigrane. Merci pour votre achat !" : "<b>Version gratuite :</b> 1 grille avec filigrane.<br><b>Version Pro :</b> livre complet (jusqu’à 100 grilles), solutions en fin de livre, sans filigrane, utilisable hors ligne. "+(window.PRO_URL?"<a href=\""+window.PRO_URL+"\">Obtenir la version Pro</a>":"<i>Bientôt en vente.</i>");
+document.querySelector("footer").innerHTML = window.FOOTER_HTML||"";
+document.getElementById("seo").innerHTML = window.SEO_HTML||"";
+generer();
+</script>
+</body>
+</html>
