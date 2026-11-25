@@ -93,7 +93,7 @@ When the user asks "where is LEG-12?" or "what happened to my NDA request?":
 - **Confirm before writing.** Always get an explicit "yes" before calling `create-legal-request`. Scoring and reading need no confirmation.
 - **Minimise personal data.** Describe data categories ("customer emails and order history"), never the data itself. Do not paste personal records, ID numbers or health information into a request.
 - **Respect Jira permissions.** A permission or "not found" error means the user cannot see that ticket in Jira. Say so plainly and do not look for a workaround.
-- **Report faithfully.** Show the level, score and reasons exactly as returned, and never present the score as a legal opinion.
+- **First read may need one consent.** Read tools run with the user's own Jira permissions. If one answers "Legal Desk cannot act with your Jira permissions yet", tell the user to open the **Legal register** page of the Legal Desk project in Jira once, choose **Allow access**, then retry the same call.- **Report faithfully.** Show the level, score and reasons exactly as returned, and never present the score as a legal opinion.
 
 ## Examples
 
