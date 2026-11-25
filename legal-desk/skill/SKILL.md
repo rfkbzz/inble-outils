@@ -27,7 +27,7 @@ Tool names can carry an environment suffix, for example `assess-legal-risk_devel
 | `assess-legal-risk` | Scores a request: risk level and score, suggested turnaround in days, the reasons behind the score, the lawyer's checklist. Read-only: nothing is created. | `requestType` (required) · `amount` · `urgent` · `personalData` · `outsideEu` · `counterparty` |
 | `create-legal-request` | Creates the Jira legal ticket with the structured facts, risk labels and due date. Returns the issue key and the due date. | `summary`, `requestType`, `details` (required) · `counterparty` · `amount` · `urgent` · `personalData` · `outsideEu` |
 | `list-legal-requests` | Lists Legal Desk requests with risk level, due date and status, overdue and high-risk first. Read-only. | `view`: `open` (default) · `overdue` · `high_risk` · `all` — `maxResults`: 1 to 50 (default 20) |
-| `get-legal-request` | Returns one request: status, due date, the intake facts and the recomputed risk with reasons and checklist. Read-only. | `issueKey` (required), for example `LEG-12` |
+| `get-legal-request` | Returns one request: status, due date, the intake facts, and the risk as recorded on the ticket (the same level `list-legal-requests` shows), with reasons and checklist. If today's rules would rate it differently, `computedLevel` and `levelSource` say so. Read-only. | `issueKey` (required), for example `LEG-12` |
 
 Input formats: `amount` is a plain number in the company currency (no currency sign, no thousands separator). `urgent`, `personalData` and `outsideEu` are booleans. Everything else is a string.
 
